@@ -53,6 +53,23 @@ final class ReplaceTest extends WP_UnitTestCase {
 		$this->assertSame( getimagesize( DIR_TESTDATA . '/images/test-image.jpg' )[0], wp_get_attachment_metadata( $this->id )['width'] );
 	}
 
+	public function test_a_rotated_jpeg_keeps_the_file_name(): void {
+		$file = get_attached_file( $this->id );
+		$url  = wp_get_attachment_url( $this->id );
+		$this->assertTrue( Replacer::replace( $this->id, $this->copy_of( DIR_TESTDATA . '/images/test-image-upside-down.jpg', 'up.jpg' ), 'up.jpg' ) );
+		$this->assertSame( $file, get_attached_file( $this->id ) );
+		$this->assertSame( $url, wp_get_attachment_url( $this->id ) );
+	}
+
+	public function test_keeps_the_pre_edit_original_that_content_may_link_to(): void {
+		$dir  = dirname( get_attached_file( $this->id ) );
+		$orig = $dir . '/pre-edit.jpg';
+		copy( DIR_TESTDATA . '/images/test-image.jpg', $orig );
+		update_post_meta( $this->id, '_wp_attachment_backup_sizes', array( 'full-orig' => array( 'file' => 'pre-edit.jpg' ) ) );
+		Replacer::replace( $this->id, $this->copy_of( DIR_TESTDATA . '/images/test-image.jpg', 'new.jpg' ), 'new.jpg' );
+		$this->assertFileExists( $orig );
+	}
+
 	public function test_updates_metadata_through_the_standard_filter_so_offload_plugins_notice(): void {
 		$seen = 0;
 		add_filter(

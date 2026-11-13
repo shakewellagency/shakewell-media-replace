@@ -46,13 +46,15 @@ final class Replacer {
 		}
 
 		$old_meta = wp_get_attachment_metadata( $id );
-		self::delete_generated( $id, $old, is_array( $old_meta ) ? $old_meta : array() );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- same folder, and WP_Filesystem has no atomic rename.
 		if ( ! rename( $old . '.new', $old ) ) {
 			wp_delete_file( $old . '.new' );
 			return new WP_Error( 'shakewell_media_replace_write', __( 'The new file could not be saved.', 'shakewell-media-replace' ) );
 		}
+
+		// Only now that the new file is in place: new sizes can reuse the old names, so delete before regenerating.
+		self::delete_generated( $id, $old, is_array( $old_meta ) ? $old_meta : array() );
 
 		if ( get_post_mime_type( $id ) !== $checked['type'] ) {
 			wp_update_post(
@@ -64,10 +66,12 @@ final class Replacer {
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/image.php';
-		// Keep the path: scaling a big image would rename the file and so change the URL.
+		// Keep the path: scaling a big image or rotating it for its EXIF orientation would rename the file and so change the URL.
 		add_filter( 'big_image_size_threshold', '__return_false' );
+		add_filter( 'wp_image_maybe_exif_rotate', '__return_false' );
 		$meta = wp_generate_attachment_metadata( $id, $old );
 		remove_filter( 'big_image_size_threshold', '__return_false' );
+		remove_filter( 'wp_image_maybe_exif_rotate', '__return_false' );
 
 		// Fires wp_update_attachment_metadata, which offload plugins and CDNs listen to.
 		wp_update_attachment_metadata( $id, $meta );
@@ -122,7 +126,7 @@ final class Replacer {
 	}
 
 	/**
-	 * Deletes every generated size and the unscaled original, but not the main file.
+	 * Deletes every generated size, the unscaled original and edit backups (except 'full-orig'), but not the main file.
 	 *
 	 * @param int    $id   Attachment ID.
 	 * @param string $old  Path of the main file.
@@ -134,8 +138,9 @@ final class Replacer {
 			$names[] = $size['file'] ?? '';
 		}
 		$names[] = $meta['original_image'] ?? '';
-		foreach ( (array) get_post_meta( $id, '_wp_attachment_backup_sizes', true ) as $size ) {
-			$names[] = is_array( $size ) ? ( $size['file'] ?? '' ) : '';
+		// 'full-orig' is the file as it was before an image-editor edit; content may still link to it, so it stays.
+		foreach ( (array) get_post_meta( $id, '_wp_attachment_backup_sizes', true ) as $key => $size ) {
+			$names[] = is_array( $size ) && 'full-orig' !== $key ? ( $size['file'] ?? '' ) : '';
 		}
 
 		foreach ( array_unique( array_filter( $names, 'is_string' ) ) as $name ) {

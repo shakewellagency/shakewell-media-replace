@@ -20,7 +20,7 @@ Safety checks on every replacement:
 * The new file must pass WordPress's own upload checks (allowed file types, real content type) and the upload size limit.
 * It must be the same kind of file (an image for an image, a PDF for a PDF) and have the same extension, so the address does not change.
 
-What it deliberately does not do: change the file name, or rewrite addresses in post content. Very large images are not scaled down on replacement, because scaling would rename the file.
+What it deliberately does not do: change the file name, or rewrite addresses in post content. Very large images are not scaled down and are not rotated for their EXIF orientation on replacement, because either would rename the file. A copy of the file kept from before an image-editor edit stays on disk, because content may still link to it.
 
 = Offload plugins =
 

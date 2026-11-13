@@ -14,7 +14,7 @@ Replace a media library file with a new upload and keep the attachment ID and th
 - Adds a version query string to previews in the admin so the browser shows the new picture.
 - Accessible: real labels, keyboard operable, and a polite live status message.
 
-Not in this version: renaming the file, and updating the address in post content. Images over WordPress's big image threshold are not scaled down on replacement, because scaling renames the file.
+Not in this version: renaming the file, and updating the address in post content. Images are not scaled down (big image threshold) or rotated for EXIF orientation on replacement, because either renames the file. A copy kept from before an image-editor edit (`full-orig`) stays on disk, because content may still link to it.
 
 ## Offload plugins
 
